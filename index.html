@@ -68,12 +68,18 @@
 <body class="p-4 md:p-8">
     
     <div class="max-w-7xl mx-auto space-y-8">
+        
+        <!-- Cabeçalho -->
+        <header class="text-center">
+            <h1 class="text-3xl font-semibold tracking-tight text-white mb-2">Analisador de Loot Log</h1>
+            <p class="text-lg text-slate-400">Carregue seus logs para comparar o loot com os depósitos no baú.</p>
+        </header>
 
         <!-- Mensagens de Status (Loading, Erro, Sucesso) -->
         <!-- Estilo (Alert) do ShadCN -->
         <div id="loading" class="hidden p-4 text-blue-300 bg-slate-900 border border-blue-700 rounded-lg">
             <h5 class="font-medium">Processando</h5>
-            <p class="text-sm text-blue-400">Processando, por favor aguarde...</p>
+            <p class="text-sm text-blue-400" id="loading-message">Processando, por favor aguarde...</p>
         </div>
         <div id="error" class="hidden p-4 text-red-400 bg-slate-900 border border-red-700 rounded-lg">
             <h5 class="font-medium">Erro</h5>
@@ -88,7 +94,8 @@
         <div class="bg-slate-900 border border-slate-800 rounded-lg shadow-sm">
             <div class="p-6">
                 <h3 class="text-lg font-medium mb-4">Carregar Arquivos</h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Atualizado para 2 colunas -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Passo 1: Log de Loot -->
                     <div>
                         <label for="lootLogInput" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 bg-slate-800 text-slate-50 hover:bg-slate-800/80 cursor-pointer w-full">
@@ -98,19 +105,10 @@
                         <p id="lootLogStatus" class="text-sm text-slate-400 mt-2 ml-1"></p>
                     </div>
 
-                    <!-- Passo 2: items.json -->
-                    <div>
-                        <label for="itemsJsonInput" id="itemsJsonLabel" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 bg-slate-800 text-slate-50 hover:bg-slate-800/80 cursor-pointer w-full opacity-50" style="cursor: not-allowed;">
-                            2. Carregar items.json
-                        </label>
-                        <input type="file" id="itemsJsonInput" class="hidden" accept=".json" disabled>
-                        <p id="itemsJsonStatus" class="text-sm text-slate-400 mt-2 ml-1"></p>
-                    </div>
-
-                    <!-- Passo 3: Log do Baú -->
+                    <!-- Passo 2: Log do Baú (Renomeado) -->
                     <div>
                         <label for="chestLogInput" id="chestLogLabel" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 bg-slate-800 text-slate-50 hover:bg-slate-800/80 cursor-pointer w-full opacity-50" style="cursor: not-allowed;">
-                            3. Carregar Log do Baú (.csv)
+                            2. Carregar Log do Baú (.csv)
                         </label>
                         <input type="file" id="chestLogInput" class="hidden" accept=".csv" disabled>
                         <p id="chestLogStatus" class="text-sm text-slate-400 mt-2 ml-1"></p>
@@ -195,10 +193,9 @@
         // --- Variáveis Globais da DOM ---
         // (Declaradas aqui, inicializadas no DOMContentLoaded)
         let lootLogInput, lootLogStatus, 
-            itemsJsonInput, itemsJsonLabel, itemsJsonStatus,
             chestLogInput, chestLogLabel, chestLogStatus,
             guildFilter, depositFilter, depositFilterContainer, filtersSection,
-            loading, errorEl, successEl, errorElMsg, successElMsg,
+            loading, loadingMsg, errorEl, successEl, errorElMsg, successElMsg,
             guildStatsCard, guildStatsTitle,
             guildStatsItems, playerLootContainer;
 
@@ -206,6 +203,35 @@
         // --- FUNÇÕES DE LÓGICA E PARSING ---
         // (As definições das funções ficam no escopo do módulo)
 
+        /**
+         * Carrega e processa o items.json da URL.
+         */
+        async function loadItemsJsonFromUrl() {
+            try {
+                showLoading("Baixando dicionário de itens (items.json)...");
+                const response = await fetch('https://loot-logger-albion.vercel.app/items.json');
+                
+                if (!response.ok) {
+                    throw new Error(`Erro HTTP! status: ${response.status}`);
+                }
+                
+                const jsonText = await response.text(); // Ler como texto primeiro
+                const items = JSON.parse(jsonText); // Fazer o parse
+                
+                itemTranslationMap = buildItemTranslationMap(items);
+                isItemMapReady = true;
+
+                showSuccess(`Dicionário de itens carregado! ${Object.keys(itemTranslationMap).length} itens mapeados.`);
+                resetUI('items'); // Habilita o Passo 2 (Baú) se o Passo 1 já estiver pronto
+            
+            } catch (err) {
+                showError(`Falha ao carregar items.json da URL: ${err.message}. Tente recarregar a página.`);
+                console.error("Stack:", err.stack);
+                isItemMapReady = false;
+                resetUI(null); // Reseta tudo
+            }
+        }
+        
         /**
          * Processa o CSV do Log de Loot (Passo 1).
          * @param {string} csvText - O conteúdo do arquivo CSV.
@@ -303,12 +329,11 @@
         /**
          * Processa o JSON de Itens (Passo 2).
          * Cria um mapa de "Nome PT-BR Normalizado" -> "ID Base Normalizado".
-         * @param {string} jsonText - O conteúdo do arquivo items.json.
+         * @param {Array} items - O array de itens do items.json.
          * @returns {Object} - Mapa (dicionário) de tradução.
          */
-        function buildItemTranslationMap(jsonText) {
+        function buildItemTranslationMap(items) {
             const translationMap = {};
-            const items = JSON.parse(jsonText);
 
             if (!Array.isArray(items)) {
                 throw new Error("O arquivo items.json não é um array válido.");
@@ -342,7 +367,7 @@
         }
 
         /**
-         * Processa o CSV do Log do Baú (Passo 3).
+         * Processa o CSV do Log do Baú (Passo 2, antigo 3).
          * @param {string} csvText - O conteúdo do arquivo CSV do baú.
          * @returns {Object} - Objeto { playerKey: { itemKey: quantity } }
          */
@@ -577,7 +602,7 @@
             ledgerLink.href = `https://murderledger.albiononline2d.com/players/${playerName}/ledger?show_kills=0&show_assists=0`;
             ledgerLink.target = '_blank';
             ledgerLink.rel = 'noopener noreferrer';
-            ledgerLink.textContent = 'MurderLedger'; // Texto mais curto
+            ledgerLink.textContent = 'Ledger'; // Texto mais curto
             // Estilo de botão "link" do ShadCN
             ledgerLink.className = 'inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-9 px-3 py-1 bg-transparent text-slate-50 hover:bg-slate-800 hover:text-slate-50 shrink-0'; // shrink-0 para evitar quebra de linha
 
@@ -707,35 +732,26 @@
             if (errorEl) errorEl.classList.add('hidden');
             if (successEl) successEl.classList.add('hidden');
 
-            // Habilita Passo 2 (items.json) se o Passo 1 (Loot) estiver concluído
             const lootLoaded = Object.keys(lootData).length > 0;
-            if (itemsJsonInput) itemsJsonInput.disabled = !lootLoaded;
-            if (itemsJsonLabel) itemsJsonLabel.style.cursor = lootLoaded ? 'pointer' : 'not-allowed';
-            if (itemsJsonLabel) itemsJsonLabel.classList.toggle('opacity-50', !lootLoaded);
             
-            // Habilita Passo 3 (Baú) se o Passo 2 (items.json) estiver concluído
-            if (chestLogInput) chestLogInput.disabled = !isItemMapReady;
-            if (chestLogLabel) chestLogLabel.style.cursor = isItemMapReady ? 'pointer' : 'not-allowed';
-            if (chestLogLabel) chestLogLabel.classList.toggle('opacity-50', !isItemMapReady);
+            // Habilita Passo 2 (Baú) se o Passo 1 (Loot) E o items.json (automático) estiverem concluídos
+            const canLoadChest = lootLoaded && isItemMapReady;
+            if (chestLogInput) chestLogInput.disabled = !canLoadChest;
+            if (chestLogLabel) chestLogLabel.style.cursor = canLoadChest ? 'pointer' : 'not-allowed';
+            if (chestLogLabel) chestLogLabel.classList.toggle('opacity-50', !canLoadChest);
 
             // Controla a visibilidade dos filtros e resultados
             if (step === 'loot') {
-                // Limpa tudo a partir do Passo 2
-                if (itemsJsonStatus) itemsJsonStatus.textContent = '';
+                // Limpa tudo a partir do Passo 2 (Baú)
                 if (chestLogStatus) chestLogStatus.textContent = '';
                 chestDepositData = {};
-                itemTranslationMap = {};
-                isItemMapReady = false;
                 
                 if (depositFilterContainer) depositFilterContainer.classList.add('hidden');
                 if (playerLootContainer) playerLootContainer.innerHTML = '';
                 if (guildStatsCard) guildStatsCard.classList.add('hidden');
             } else if (step === 'items') {
-                // Limpa tudo a partir do Passo 3
-                if (chestLogStatus) chestLogStatus.textContent = '';
-                chestDepositData = {};
-                
-                if (depositFilterContainer) depositFilterContainer.classList.add('hidden');
+                // Acontece após o fetch do items.json. Apenas re-habilita o botão do baú.
+                // Não limpa mais nada.
             } else if (step === 'chest') {
                  // Apenas atualiza a UI, não limpa dados anteriores
                  if (depositFilterContainer) depositFilterContainer.classList.remove('hidden');
@@ -744,14 +760,13 @@
             // Reseta o estado inicial (se nenhum passo foi dado)
             if (step === null) {
                 if (lootLogStatus) lootLogStatus.textContent = '';
-                if (itemsJsonStatus) itemsJsonStatus.textContent = '';
                 if (chestLogStatus) chestLogStatus.textContent = '';
                 lootData = {};
                 chestDepositData = {};
                 itemTranslationMap = {};
                 guildList.clear();
-                isItemMapReady = false;
-
+                // Não reseta isItemMapReady, pois ele é carregado no início
+                
                 if (filtersSection) filtersSection.classList.add('hidden');
                 if (depositFilterContainer) depositFilterContainer.classList.add('hidden');
                 if (playerLootContainer) playerLootContainer.innerHTML = '';
@@ -769,6 +784,18 @@
             }
         }
 
+        /**
+         * Mostra uma mensagem de carregamento na UI.
+         * @param {string} message - A mensagem de carregamento.
+         */
+        function showLoading(message) {
+            if (loading && loadingMsg) {
+                loadingMsg.textContent = message;
+                loading.classList.remove('hidden');
+            }
+            if (errorEl) errorEl.classList.add('hidden');
+            if (successEl) successEl.classList.add('hidden');
+        }
 
         /**
          * Mostra uma mensagem de erro na UI.
@@ -808,16 +835,13 @@
 
         // --- INICIALIZAÇÃO E EVENTOS ---
         // Espera o DOM carregar antes de inicializar elementos e adicionar listeners
-        window.addEventListener('DOMContentLoaded', () => { // Removido 'async'
+        window.addEventListener('DOMContentLoaded', async () => {
             
             // 1. INICIALIZAÇÃO DOS ELEMENTOS DA DOM
             lootLogInput = document.getElementById('lootLogInput');
             lootLogStatus = document.getElementById('lootLogStatus');
 
-            // Adicionado de volta
-            itemsJsonInput = document.getElementById('itemsJsonInput');
-            itemsJsonLabel = document.getElementById('itemsJsonLabel');
-            itemsJsonStatus = document.getElementById('itemsJsonStatus');
+            // Removidos: itemsJsonInput, itemsJsonLabel, itemsJsonStatus
 
             chestLogInput = document.getElementById('chestLogInput');
             chestLogLabel = document.getElementById('chestLogLabel');
@@ -827,8 +851,9 @@
             depositFilter = document.getElementById('depositFilter');
             depositFilterContainer = document.getElementById('depositFilterContainer');
             filtersSection = document.getElementById('filtersSection');
-            loading = document.getElementById('loading');
             
+            loading = document.getElementById('loading');
+            loadingMsg = document.getElementById('loading-message');
             errorEl = document.getElementById('error');
             errorElMsg = document.getElementById('error-message');
             successEl = document.getElementById('success');
@@ -839,7 +864,8 @@
             guildStatsItems = document.getElementById('guildStatsItems');
             playerLootContainer = document.getElementById('playerLootContainer');
             
-            // 2. REMOVIDO: CARREGAMENTO AUTOMÁTICO DO ITEMS.JSON DO GITHUB
+            // 2. CARREGAMENTO AUTOMÁTICO DO ITEMS.JSON
+            await loadItemsJsonFromUrl();
 
             // 3. ATRIBUIÇÃO DOS EVENT LISTENERS
             
@@ -851,6 +877,7 @@
 
                     resetUI('loot'); // Reseta a partir do passo 1
                     lootLogStatus.textContent = `Carregando: ${file.name}`;
+                    showLoading("Processando Log de Loot...");
                     
                     const reader = new FileReader();
                     reader.onload = (e) => {
@@ -864,7 +891,7 @@
                             lootLogStatus.textContent = `Carregado: ${file.name}`;
                             
                             populateGuildFilter(guildList);
-                            resetUI('loot'); // Habilita o Passo 2 (items.json)
+                            resetUI('loot'); // Habilita o Passo 2 (Baú)
                             displayLootData();
                         } catch (err) {
                             showError(`Erro ao processar o arquivo: ${err.message}`);
@@ -880,49 +907,17 @@
                 });
             }
 
-            // Event listener para o input do items.json (Passo 2) - Adicionado de volta
-            if (itemsJsonInput) {
-                itemsJsonInput.addEventListener('change', (event) => {
-                    const file = event.target.files[0];
-                    if (!file) return;
-
-                    resetUI('items'); // Reseta a partir do passo 2
-                    itemsJsonStatus.textContent = `Carregando: ${file.name}`;
-
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        try {
-                            const jsonText = e.target.result;
-                            itemTranslationMap = buildItemTranslationMap(jsonText);
-                            isItemMapReady = true;
-
-                            showSuccess(`Dicionário de itens (items.json) carregado. ${Object.keys(itemTranslationMap).length} itens mapeados.`);
-                            itemsJsonStatus.textContent = `Carregado: ${file.name}`;
-
-                            resetUI('items'); // Habilita o Passo 3 (Baú)
-                        } catch (err) {
-                            showError(`Erro ao processar o items.json: ${err.message}`);
-                            console.error("Stack:", err.stack);
-                            isItemMapReady = false;
-                            resetUI('loot'); // Reverte para o estado pós-passo 1
-                        }
-                    };
-                    reader.onerror = () => {
-                        showError('Falha ao ler o arquivo items.json.');
-                        resetUI('loot');
-                    };
-                    reader.readAsText(file);
-                });
-            }
+            // Removido: Event listener para o input do items.json
             
-            // Event listener para o input do Log do Baú (Passo 3)
+            // Event listener para o input do Log do Baú (Passo 2, antigo 3)
             if (chestLogInput) {
                 chestLogInput.addEventListener('change', (event) => {
                     const file = event.target.files[0];
                     if (!file) return;
 
-                    resetUI('chest'); // Reseta a partir do passo 3
+                    resetUI('chest'); // Reseta a partir do passo 2
                     chestLogStatus.textContent = `Carregando: ${file.name}`;
+                    showLoading("Processando Log do Baú...");
                     
                     const reader = new FileReader();
                     reader.onload = (e) => {
@@ -938,7 +933,7 @@
                         } catch (err) {
                             showError(`Erro ao processar o log do baú: ${err.message}`);
                             console.error("Stack:", err.stack);
-                            resetUI('items'); // Reverte para o estado pós-passo 2
+                            resetUI('items'); // Reverte para o estado pós-passo 1
                         }
                     };
                     reader.onerror = () => {
