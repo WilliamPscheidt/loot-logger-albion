@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analisador de Loot Log do Albion</title>
+    <!-- Carrega o Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Tema Escuro Padrão (Baseado no ShadCN) */
+        :root {
+            color-scheme: dark;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Cor de fundo principal (ShadCN background) */
+            background-color: #030712; /* slate-950 */
+            /* Cor de texto principal (ShadCN foreground) */
+            color: #f8fafc; /* slate-50 */
+        }
+
+        /* Remove os estilos customizados de .file-input-button e .dark-select */
+        /* Todo o estilo será feito com classes do Tailwind no HTML */
+        
+        /* Estilo para Tooltips (dicas) (Atualizado para o tema ShadCN) */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            /* Fundo (ShadCN Popover) */
+            background-color: #030712; /* slate-950 */
+            color: #f8fafc; /* slate-50 */
+            text-align: left;
+            border-radius: 0.375rem; /* rounded-md */
+            padding: 0.5rem; /* p-2 */
+            position: absolute;
+            z-index: 10;
+            bottom: 125%; /* Posiciona acima do ícone */
+            left: 50%;
+            margin-left: -100px; /* Metade da largura para centralizar */
+            opacity: 0;
+            transition: opacity 0.3s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            border: 1px solid #1e293b; /* slate-800 */
+            font-size: 0.75rem; /* text-xs */
+            line-height: 1.4;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        /* Estilo para ícones de item */
+        .tooltip img {
+            display: block;
+        }
+
+    </style>
+    <!-- Fonte Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="p-4 md:p-8">
+    
+    <div class="max-w-7xl mx-auto space-y-8">
+
+        <!-- Mensagens de Status (Loading, Erro, Sucesso) -->
+        <!-- Estilo (Alert) do ShadCN -->
+        <div id="loading" class="hidden p-4 text-blue-300 bg-slate-900 border border-blue-700 rounded-lg">
+            <h5 class="font-medium">Processando</h5>
+            <p class="text-sm text-blue-400">Processando, por favor aguarde...</p>
+        </div>
+        <div id="error" class="hidden p-4 text-red-400 bg-slate-900 border border-red-700 rounded-lg">
+            <h5 class="font-medium">Erro</h5>
+            <p class="text-sm text-red-500" id="error-message"></p>
+        </div>
+        <div id="success" class="hidden p-4 text-green-400 bg-slate-900 border border-green-700 rounded-lg">
+             <h5 class="font-medium">Sucesso</h5>
+            <p class="text-sm text-green-500" id="success-message"></p>
+        </div>
+
+        <!-- Seção de Upload de Arquivos (Estilo Card) -->
+        <div class="bg-slate-900 border border-slate-800 rounded-lg shadow-sm">
+            <div class="p-6">
+                <h3 class="text-lg font-medium mb-4">Carregar Arquivos</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Passo 1: Log de Loot -->
+                    <div>
+                        <label for="lootLogInput" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 bg-slate-800 text-slate-50 hover:bg-slate-800/80 cursor-pointer w-full">
+                            1. Carregar Log de Loot (.csv)
+                        </label>
+                        <input type="file" id="lootLogInput" class="hidden" accept=".csv">
+                        <p id="lootLogStatus" class="text-sm text-slate-400 mt-2 ml-1"></p>
+                    </div>
+
+                    <!-- Passo 2: items.json -->
+                    <div>
+                        <label for="itemsJsonInput" id="itemsJsonLabel" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 bg-slate-800 text-slate-50 hover:bg-slate-800/80 cursor-pointer w-full opacity-50" style="cursor: not-allowed;">
+                            2. Carregar items.json
+                        </label>
+                        <input type="file" id="itemsJsonInput" class="hidden" accept=".json" disabled>
+                        <p id="itemsJsonStatus" class="text-sm text-slate-400 mt-2 ml-1"></p>
+                    </div>
+
+                    <!-- Passo 3: Log do Baú -->
+                    <div>
+                        <label for="chestLogInput" id="chestLogLabel" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 bg-slate-800 text-slate-50 hover:bg-slate-800/80 cursor-pointer w-full opacity-50" style="cursor: not-allowed;">
+                            3. Carregar Log do Baú (.csv)
+                        </label>
+                        <input type="file" id="chestLogInput" class="hidden" accept=".csv" disabled>
+                        <p id="chestLogStatus" class="text-sm text-slate-400 mt-2 ml-1"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Seção de Filtros (Estilo Card) -->
+        <section id="filtersSection" class="hidden bg-slate-900 border border-slate-800 rounded-lg shadow-sm">
+            <div class="p-6 flex flex-col md:flex-row md:items-center md:space-x-6 space-y-4 md:space-y-0">
+                <!-- Filtro de Guilda (Estilo Input/Select) -->
+                <div class="flex-1">
+                    <label for="guildFilter" class="block text-sm font-medium text-slate-300 mb-2">Filtrar por Guilda:</label>
+                    <select id="guildFilter" name="guildFilter" class="flex h-10 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950">
+                        <option value="all">Todas as Guildas</option>
+                        <!-- Opções de guilda serão preenchidas dinamicamente -->
+                    </select>
+                </div>
+                
+                <!-- Filtro de Depósito (Estilo Input/Select) -->
+                <div id="depositFilterContainer" class="flex-1 hidden">
+                    <label for="depositFilter" class="block text-sm font-medium text-slate-300 mb-2">Filtrar por Depósito:</label>
+                    <select id="depositFilter" name="depositFilter" class="flex h-10 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950">
+                        <option value="all">Todos os Itens</option>
+                        <option value="deposited">Apenas Depositados (parcial ou total)</option>
+                        <option value="not-deposited">Apenas Não Depositados</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- Seção de Resultados -->
+        <section id="resultsSection" class="space-y-6">
+            
+            <!-- Card de Estatísticas da Guilda (Estilo Card) -->
+            <div id="guildStatsCard" class="bg-slate-900 border border-slate-800 rounded-lg shadow-sm overflow-hidden hidden">
+                <!-- CardHeader -->
+                <div class="p-6 border-b border-slate-800">
+                    <h2 id="guildStatsTitle" class="text-xl font-semibold tracking-tight text-white">
+                        Estatísticas da Guilda
+                    </h2>
+                </div>
+                <!-- CardContent -->
+                <div id="guildStatsItems" class="p-6 flex flex-wrap gap-3">
+                    <!-- Ícones dos itens da guilda serão inseridos aqui -->
+                </div>
+            </div>
+
+            <!-- Container dos Cards de Jogador -->
+            <div id="playerLootContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- 
+                Template de Card de Jogador (Estilo Card)
+                <div class="bg-slate-900 border border-slate-800 rounded-lg shadow-sm overflow-hidden">
+                    <div class="p-4 border-b border-slate-800 flex justify-between items-center">
+                        <div>
+                            <h3 class="text-lg font-semibold tracking-tight">Nome do Jogador</h3>
+                            <p class="text-sm text-slate-400">[Nome da Guilda]</p>
+                        </div>
+                        <a href="#" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-9 px-3 py-1 bg-transparent text-slate-50 hover:bg-slate-800 hover:text-slate-50">
+                            Murderledger
+                        </a>
+                    </div>
+                    <div class="p-4 flex flex-wrap gap-3">
+                        (Ícones aqui)
+                    </div>
+                </div> 
+                -->
+            </div>
+        </section>
+
+    </div>
+
+    <script type="module">
+        // --- Variáveis Globais de Estado ---
+        let lootData = {}; // Guarda o loot principal
+        let chestDepositData = {}; // Guarda os depósitos do baú
+        let itemTranslationMap = {}; // Guarda o "dicionário" (ex: "nome ptbr normalizado": "id_base_normalizado")
+        let guildList = new Set(); // Lista de guildas únicas
+        let isItemMapReady = false; // Flag para saber se o items.json foi carregado
+
+        // --- Variáveis Globais da DOM ---
+        // (Declaradas aqui, inicializadas no DOMContentLoaded)
+        let lootLogInput, lootLogStatus, 
+            itemsJsonInput, itemsJsonLabel, itemsJsonStatus,
+            chestLogInput, chestLogLabel, chestLogStatus,
+            guildFilter, depositFilter, depositFilterContainer, filtersSection,
+            loading, errorEl, successEl, errorElMsg, successElMsg,
+            guildStatsCard, guildStatsTitle,
+            guildStatsItems, playerLootContainer;
+
+
+        // --- FUNÇÕES DE LÓGICA E PARSING ---
+        // (As definições das funções ficam no escopo do módulo)
+
+        /**
+         * Processa o CSV do Log de Loot (Passo 1).
+         * @param {string} csvText - O conteúdo do arquivo CSV.
+         * @returns {Object} - Objeto com { data: lootByPlayer, guilds: guildList }
+         */
+        function parseLootLog(csvText) {
+            const lootByPlayer = {}; // Estrutura: { playerKey: { name, guild, items: { itemKey: { ... } } } }
+            const guildList = new Set();
+            
+            // Remove BOM e corrige quebras de linha
+            const lines = csvText.trim().replace(/^\uFEFF/, '').split(/\r?\n/);
+
+            if (lines.length <= 1) {
+                throw new Error("O arquivo CSV está vazio ou tem apenas cabeçalhos.");
+            }
+
+            // Limpa cabeçalhos (remove aspas, espaços e BOM residual)
+            const headers = lines[0].trim().replace(/^\uFEFF/, '').split(';').map(h => h.replace(/"/g, '').trim());
+            
+            // Encontra os índices das colunas necessárias
+            const nameIndex = headers.indexOf('looted_by__name');
+            const guildIndex = headers.indexOf('looted_by__guild');
+            const itemIdIndex = headers.indexOf('item_id');
+            const itemNameIndex = headers.indexOf('item_name');
+            const quantityIndex = headers.indexOf('quantity');
+
+            // Validação dos cabeçalhos
+            if ([nameIndex, guildIndex, itemIdIndex, itemNameIndex, quantityIndex].includes(-1)) {
+                console.error("Cabeçalhos encontrados:", headers);
+                throw new Error("Cabeçalhos do CSV não encontrados: 'looted_by__name', 'looted_by__guild', 'item_id', 'item_name' ou 'quantity' estão faltando.");
+            }
+
+            // Itera pelas linhas de dados
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i];
+                if (!line) continue; // Pula linhas em branco
+
+                const columns = line.split(';');
+
+                // Pega os dados das colunas
+                const playerName = columns[nameIndex]?.replace(/"/g, '').trim();
+                const playerGuild = columns[guildIndex]?.replace(/"/g, '').trim() || 'Sem Guilda'; // Padrão se a guilda estiver vazia
+                const itemId = columns[itemIdIndex]?.replace(/"/g, '').trim(); // Ex: T7_2H_MACE@1
+                const itemName = columns[itemNameIndex]?.replace(/"/g, '').trim(); // Ex: Grandmaster's Heavy Mace
+                const quantity = parseInt(columns[quantityIndex], 10);
+
+                // Validação da linha
+                if (!playerName || !itemId || !itemName || isNaN(quantity) || quantity <= 0) {
+                    continue; // Pula linhas inválidas ou que não sejam loot (ex: quantidade 0)
+                }
+                
+                // --- Normalização ---
+                // Chave do jogador (ex: "ogrenred")
+                const playerKey = normalizeString(playerName);
+                
+                // Chave do item (ex: "t7_2h_mace")
+                // Remove encantamento (@1) e qualidade para agrupar
+                const uniqueName = itemId.split('@')[0]; // Ex: T7_2H_MACE
+                const itemKey = normalizeString(uniqueName); // Ex: t7_2h_mace
+
+                // Adiciona guilda à lista
+                guildList.add(playerGuild);
+
+                // Inicializa o jogador se for a primeira vez
+                if (!lootByPlayer[playerKey]) {
+                    lootByPlayer[playerKey] = {
+                        name: playerName,
+                        guild: playerGuild,
+                        items: {}
+                    };
+                }
+                
+                // Inicializa o item para o jogador se for a primeira vez
+                if (!lootByPlayer[playerKey].items[itemKey]) {
+                    lootByPlayer[playerKey].items[itemKey] = {
+                        name: itemName, // Nome em Inglês (do log de loot)
+                        itemId: itemId, // ID completo (com @) para o ícone
+                        uniqueName: uniqueName, // ID base (sem @)
+                        lootedQuantity: 0,
+                        depositedQuantity: 0 // Inicia zerado
+                    };
+                }
+                
+                // Soma a quantidade looteada
+                lootByPlayer[playerKey].items[itemKey].lootedQuantity += quantity;
+            }
+            
+            if (Object.keys(lootByPlayer).length === 0) {
+                throw new Error("Nenhum dado de loot válido foi encontrado no arquivo.");
+            }
+
+            return { data: lootByPlayer, guilds: guildList };
+        }
+
+        /**
+         * Processa o JSON de Itens (Passo 2).
+         * Cria um mapa de "Nome PT-BR Normalizado" -> "ID Base Normalizado".
+         * @param {string} jsonText - O conteúdo do arquivo items.json.
+         * @returns {Object} - Mapa (dicionário) de tradução.
+         */
+        function buildItemTranslationMap(jsonText) {
+            const translationMap = {};
+            const items = JSON.parse(jsonText);
+
+            if (!Array.isArray(items)) {
+                throw new Error("O arquivo items.json não é um array válido.");
+            }
+
+            items.forEach(item => {
+                // Pega o nome em PT-BR
+                const ptbrName = item.LocalizedNames?.['PT-BR'];
+                // Pega o UniqueName (pode ter @ ou não, ex: T7_2H_MACE@1 ou T7_2H_MACE)
+                const uniqueName = item.UniqueName;
+
+                if (ptbrName && uniqueName) {
+                    // Chave: Nome em PT-BR normalizado
+                    // Ex: "maça pesada do grão-mestre (.1)"
+                    const nameKey = normalizeString(ptbrName); 
+                    
+                    // Valor: ID Base normalizado
+                    const baseUniqueName = uniqueName.split('@')[0]; // Ex: T7_2H_MACE
+                    const baseUniqueNameKey = normalizeString(baseUniqueName); // Ex: t7_2h_mace
+                    
+                    // Armazena (ex: "maça pesada...": "t7_2h_mace")
+                    translationMap[nameKey] = baseUniqueNameKey;
+                }
+            });
+            
+            if (Object.keys(translationMap).length === 0) {
+                throw new Error("Nenhum item traduzido (PT-BR) foi encontrado no items.json.");
+            }
+
+            return translationMap;
+        }
+
+        /**
+         * Processa o CSV do Log do Baú (Passo 3).
+         * @param {string} csvText - O conteúdo do arquivo CSV do baú.
+         * @returns {Object} - Objeto { playerKey: { itemKey: quantity } }
+         */
+        function parseChestLog(csvText) {
+            const depositsByPlayer = {}; // Estrutura: { playerKey: { itemKey_normalizado: quantity } }
+            
+            // Remove BOM e corrige quebras de linha
+            const lines = csvText.trim().replace(/^\uFEFF/, '').split(/\r?\n/);
+
+            if (lines.length <= 1) {
+                throw new Error("O arquivo do baú está vazio ou tem apenas cabeçalhos.");
+            }
+            
+            // Log do baú é separado por TAB (\t) e tem aspas
+            const headers = lines[0].trim().replace(/^\uFEFF/, '').split('\t').map(h => h.replace(/"/g, '').trim());
+            
+            const nameIndex = headers.indexOf('Jogador');
+            const itemIndex = headers.indexOf('Item');
+            const quantityIndex = headers.indexOf('Quantidade');
+            
+            // Validação dos cabeçalhos
+            if ([nameIndex, itemIndex, quantityIndex].includes(-1)) {
+                console.error("Cabeçalhos do Log do Baú encontrados:", headers);
+                throw new Error("Cabeçalhos do log do baú não encontrados: 'Jogador', 'Item' ou 'Quantidade' estão faltando.");
+            }
+
+            // Itera pelas linhas de dados
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i];
+                if (!line) continue; // Pula linhas em branco
+                
+                const columns = line.split('\t');
+
+                // Garante que a linha tem o número esperado de colunas
+                if (columns.length < Math.max(nameIndex, itemIndex, quantityIndex) + 1) {
+                    continue; 
+                }
+                
+                // Limpa aspas (") dos dados
+                const playerName = columns[nameIndex]?.replace(/"/g, '').trim();
+                const itemNamePTBR = columns[itemIndex]?.replace(/"/g, '').trim(); // Nome em PT-BR (ex: "Picareta do Perito")
+                const quantity = parseInt(columns[quantityIndex]?.replace(/"/g, ''), 10);
+                
+                // Pula a linha se o jogador ou o item não existirem (evita erro 'toLowerCase of undefined')
+                if (!playerName || !itemNamePTBR || isNaN(quantity)) {
+                    continue; 
+                }
+
+                // Considera apenas DEPÓSITOS (ignora retiradas)
+                if (quantity <= 0) {
+                    continue;
+                }
+                
+                // --- Normalização e Tradução ---
+                const playerKey = normalizeString(playerName);
+                // Chave de busca: nome em PT-BR normalizado
+                const itemNameKey = normalizeString(itemNamePTBR); // ex: "maça pesada do grão-mestre"
+                
+                // Traduz o nome PT-BR para o ID Base Normalizado
+                // Ex: "maça pesada..." -> "t7_2h_mace"
+                const itemKey = itemTranslationMap[itemNameKey];
+                
+                // Se o item do log do baú não foi encontrado no mapa, pulamos
+                if (!itemKey) {
+                    // console.warn(`Item não traduzido do log do baú: "${itemNamePTBR}" (Chave: ${itemNameKey})`);
+                    continue;
+                }
+                
+                // A chave final 'itemKey' já é o ID base normalizado (ex: "t7_2h_mace")
+
+                // Inicializa o jogador se for a primeira vez
+                if (!depositsByPlayer[playerKey]) {
+                    depositsByPlayer[playerKey] = {};
+                }
+                
+                // Inicializa o item para o jogador se for a primeira vez
+                if (!depositsByPlayer[playerKey][itemKey]) {
+                    depositsByPlayer[playerKey][itemKey] = 0;
+                }
+                
+                // Soma a quantidade depositada
+                depositsByPlayer[playerKey][itemKey] += quantity;
+            }
+            
+            return depositsByPlayer;
+        }
+
+        // --- FUNÇÕES DE RENDERIZAÇÃO E UI ---
+
+        /**
+         * Atualiza a UI com os dados de loot, aplicando os filtros.
+         * Esta é a função principal de renderização.
+         */
+        function displayLootData() {
+            // Limpa os resultados anteriores
+            if (!playerLootContainer || !guildStatsItems || !guildStatsCard) return; // Proteção
+            
+            playerLootContainer.innerHTML = '';
+            guildStatsItems.innerHTML = '';
+            guildStatsCard.classList.add('hidden');
+            
+            // Pega os valores dos filtros
+            const selectedGuild = guildFilter.value;
+            const selectedDepositStatus = depositFilter.value;
+
+            // Objeto para acumular estatísticas da guilda
+            const guildStats = {
+                totalItems: 0,
+                items: {} // Estrutura: { itemKey: { ... } }
+            };
+
+            // 1. Itera sobre os dados de LOOT (lootData)
+            for (const playerKey in lootData) {
+                const player = lootData[playerKey];
+
+                // 2. Aplica filtro de GUILDA
+                const guildMatch = (selectedGuild === 'all' || player.guild === selectedGuild);
+                if (!guildMatch) {
+                    continue; // Pula este jogador
+                }
+
+                // Objeto para os itens filtrados deste jogador
+                const filteredPlayerItems = {};
+                let playerHasItemsToShow = false;
+
+                // 3. Itera sobre os ITENS do jogador
+                for (const itemKey in player.items) {
+                    // itemKey é o ID base normalizado (ex: t7_2h_mace)
+                    const item = player.items[itemKey];
+
+                    // 4. Busca os dados de DEPÓSITO (do log do baú)
+                    // (chestDepositData[playerKey] pode não existir)
+                    // (chestDepositData[playerKey][itemKey] pode não existir)
+                    const depositedQty = chestDepositData[playerKey]?.[itemKey] || 0;
+                    
+                    // Atualiza o item original no lootData (importante!)
+                    item.depositedQuantity = depositedQty; 
+                    
+                    const lootedQty = item.lootedQuantity;
+
+                    // 5. Aplica filtro de DEPÓSITO
+                    let depositMatch = false;
+                    switch (selectedDepositStatus) {
+                        case 'deposited':
+                            depositMatch = (depositedQty > 0);
+                            break;
+                        case 'not-deposited':
+                            depositMatch = (depositedQty === 0);
+                            break;
+                        case 'all':
+                        default:
+                            depositMatch = true;
+                            break;
+                    }
+
+                    if (depositMatch) {
+                        // Se passou em todos os filtros, adiciona aos itens do jogador
+                        filteredPlayerItems[itemKey] = item;
+                        playerHasItemsToShow = true;
+                        
+                        // Adiciona também às estatísticas da guilda
+                        if (!guildStats.items[itemKey]) {
+                            // Se for a primeira vez, clona o item
+                            guildStats.items[itemKey] = { ...item };
+                        } else {
+                            // Se já existe, apenas soma as quantidades
+                            guildStats.items[itemKey].lootedQuantity += lootedQty;
+                            guildStats.items[itemKey].depositedQuantity += depositedQty;
+                        }
+                        guildStats.totalItems += lootedQty;
+                    }
+                } // Fim do loop de itens
+
+                // 6. Renderiza o Card do Jogador (se ele tiver itens que passaram nos filtros)
+                if (playerHasItemsToShow) {
+                    const playerCard = createPlayerCard(player.name, player.guild, filteredPlayerItems);
+                    playerLootContainer.appendChild(playerCard);
+                }
+            } // Fim do loop de jogadores
+
+            // 7. Renderiza o Card de Estatísticas da Guilda
+            if (guildStats.totalItems > 0) {
+                // Define o título do card
+                let title = (selectedGuild === 'all') ? 'Todas as Guildas' : selectedGuild;
+                
+                // Formata o total de itens
+                const totalText = guildStats.totalItems.toLocaleString('pt-BR');
+                guildStatsTitle.textContent = `${title} (${totalText} itens looteados)`;
+
+                // Renderiza os ícones dos itens da guilda
+                for (const itemKey of Object.keys(guildStats.items).sort()) {
+                    const item = guildStats.items[itemKey];
+                    const itemIcon = createItemIcon(item);
+                    guildStatsItems.appendChild(itemIcon);
+                }
+                guildStatsCard.classList.remove('hidden');
+            }
+        }
+        
+        /**
+         * Cria e retorna um elemento HTML (card) para um jogador.
+         * @param {string} playerName - Nome do jogador.
+         * @param {string} playerGuild - Nome da guilda.
+         * @param {Object} items - Objeto com os itens do jogador (já filtrados).
+         * @returns {HTMLElement} - O elemento div do card.
+         */
+        function createPlayerCard(playerName, playerGuild, items) {
+            const card = document.createElement('div');
+            card.className = 'bg-slate-900 border border-slate-800 rounded-lg shadow-sm overflow-hidden';
+
+            // Cabeçalho do Card
+            const header = document.createElement('div');
+            // Modificado para flex
+            header.className = 'p-4 border-b border-slate-800 flex justify-between items-center';
+            
+            // Container para Título e Guilda
+            const titleContainer = document.createElement('div');
+
+            const title = document.createElement('h3');
+            title.className = 'text-lg font-semibold tracking-tight';
+            title.textContent = playerName;
+            
+            const description = document.createElement('p');
+            description.className = 'text-sm text-slate-400';
+            description.textContent = `[${playerGuild}]`;
+            
+            titleContainer.appendChild(title);
+            titleContainer.appendChild(description);
+            
+            // Botão Murderledger
+            const ledgerLink = document.createElement('a');
+            ledgerLink.href = `https://murderledger.albiononline2d.com/players/${playerName}/ledger?show_kills=0&show_assists=0`;
+            ledgerLink.target = '_blank';
+            ledgerLink.rel = 'noopener noreferrer';
+            ledgerLink.textContent = 'MurderLedger'; // Texto mais curto
+            // Estilo de botão "link" do ShadCN
+            ledgerLink.className = 'inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-9 px-3 py-1 bg-transparent text-slate-50 hover:bg-slate-800 hover:text-slate-50 shrink-0'; // shrink-0 para evitar quebra de linha
+
+            header.appendChild(titleContainer);
+            header.appendChild(ledgerLink); // Adiciona o link ao cabeçalho
+
+            // Container dos Itens
+            const itemsContainer = document.createElement('div');
+            itemsContainer.className = 'p-4 flex flex-wrap gap-3'; // Flex-wrap para o grid
+
+            // Ordena os itens (opcional, mas bom para consistência)
+            const sortedItemKeys = Object.keys(items).sort();
+
+            for (const itemKey of sortedItemKeys) {
+                const item = items[itemKey];
+                const itemIcon = createItemIcon(item);
+                itemsContainer.appendChild(itemIcon);
+            }
+
+            card.appendChild(header);
+            card.appendChild(itemsContainer);
+            return card;
+        }
+
+        /**
+         * Cria e retorna um elemento HTML (ícone) para um item.
+         * @param {Object} item - O objeto do item (contendo itemId, name, lootedQuantity, depositedQuantity).
+         * @returns {HTMLElement} - O elemento div do ícone (com tooltip).
+         */
+        function createItemIcon(item) {
+            // Container principal (para tooltip)
+            const iconWrapper = document.createElement('div');
+            iconWrapper.className = 'tooltip';
+
+            // O ícone em si
+            const img = document.createElement('img');
+            // Formato da URL: https://render.albiononline.com/v1/item/[ITEM_ID].png?quality=[QUALIDADE]
+            
+            // O baseUrl AGORA é o ID completo do item, incluindo o encantamento (ex: T6_2H_SKULLORB_HELL@3)
+            const baseUrl = item.itemId;
+            // O log de loot não nos dá a qualidade, então usamos 0 (Normal) como padrão para a URL.
+            const quality = 0; 
+            
+            img.src = `https://render.albiononline.com/v1/item/${baseUrl}.png?quality=${quality}&size=100`;
+            
+            img.alt = item.name;
+            // Estilo do ícone atualizado
+            img.className = 'w-16 h-16 rounded-md bg-slate-950 border-2 transition-all';
+            img.loading = 'lazy'; // Otimização
+
+            // Contagem (ex: 5/10 ou apenas 10)
+            const count = document.createElement('span');
+            // Estilo da contagem atualizado
+            count.className = 'absolute -bottom-2 -right-2 bg-slate-800 text-slate-50 text-xs font-bold px-1.5 py-0.5 rounded-full shadow-md border border-slate-700';
+            
+            // Tooltip (dica)
+            const tooltipText = document.createElement('span');
+            tooltipText.className = 'tooltiptext';
+
+            // Lógica de Borda e Texto (Depositado vs. Looteado)
+            const looted = item.lootedQuantity;
+            const deposited = item.depositedQuantity;
+
+            // Se o log do baú foi carregado (chestDepositData não está vazio)
+            if (Object.keys(chestDepositData).length > 0) {
+                count.textContent = `${deposited.toLocaleString('pt-BR')}/${looted.toLocaleString('pt-BR')}`;
+                tooltipText.innerHTML = `${item.name}<br>Depositado: ${deposited.toLocaleString('pt-BR')}<br>Looteado: ${looted.toLocaleString('pt-BR')}`;
+                
+                // Borda Verde: 100% ou mais depositado
+                if (deposited >= looted) {
+                    img.className += ' border-green-600'; // Cor ShadCN
+                } 
+                // Borda Amarela: Parcialmente depositado
+                else if (deposited > 0) {
+                    img.className += ' border-yellow-500'; // Cor ShadCN
+                } 
+                // Borda Cinza/Padrão: Nada depositado
+                else {
+                    img.className += ' border-slate-800'; // Cor ShadCN
+                }
+            } 
+            // Se o log do baú AINDA não foi carregado
+            else {
+                count.textContent = looted.toLocaleString('pt-BR');
+                tooltipText.innerHTML = `${item.name}<br>Looteado: ${looted.toLocaleString('pt-BR')}`;
+                img.className += ' border-slate-800'; // Borda padrão ShadCN
+            }
+
+            iconWrapper.appendChild(img);
+            iconWrapper.appendChild(count);
+            iconWrapper.appendChild(tooltipText);
+            
+            return iconWrapper;
+        }
+
+        /**
+         * Preenche o dropdown de filtro de guildas.
+         * @param {Set} guilds - O Set de nomes de guildas.
+         */
+        function populateGuildFilter(guilds) {
+            if (!guildFilter) return; // Proteção
+            
+            // Limpa opções antigas (exceto a primeira "Todas as Guildas")
+            while (guildFilter.options.length > 1) {
+                guildFilter.remove(1);
+            }
+            
+            // Ordena as guildas alfabeticamente
+            const sortedGuilds = [...guilds].sort((a, b) => a.localeCompare(b));
+            
+            sortedGuilds.forEach(guild => {
+                const option = document.createElement('option');
+                option.value = guild;
+                option.textContent = guild;
+                guildFilter.appendChild(option);
+            });
+        }
+        
+        // --- FUNÇÕES UTILITÁRIAS ---
+
+        /**
+         * Reseta a UI para um estado limpo, controlando a reativação dos inputs.
+         * @param {string} step - 'loot', 'items', 'chest' ou 'null'
+         */
+        function resetUI(step = null) {
+            if (loading) loading.classList.add('hidden');
+            if (errorEl) errorEl.classList.add('hidden');
+            if (successEl) successEl.classList.add('hidden');
+
+            // Habilita Passo 2 (items.json) se o Passo 1 (Loot) estiver concluído
+            const lootLoaded = Object.keys(lootData).length > 0;
+            if (itemsJsonInput) itemsJsonInput.disabled = !lootLoaded;
+            if (itemsJsonLabel) itemsJsonLabel.style.cursor = lootLoaded ? 'pointer' : 'not-allowed';
+            if (itemsJsonLabel) itemsJsonLabel.classList.toggle('opacity-50', !lootLoaded);
+            
+            // Habilita Passo 3 (Baú) se o Passo 2 (items.json) estiver concluído
+            if (chestLogInput) chestLogInput.disabled = !isItemMapReady;
+            if (chestLogLabel) chestLogLabel.style.cursor = isItemMapReady ? 'pointer' : 'not-allowed';
+            if (chestLogLabel) chestLogLabel.classList.toggle('opacity-50', !isItemMapReady);
+
+            // Controla a visibilidade dos filtros e resultados
+            if (step === 'loot') {
+                // Limpa tudo a partir do Passo 2
+                if (itemsJsonStatus) itemsJsonStatus.textContent = '';
+                if (chestLogStatus) chestLogStatus.textContent = '';
+                chestDepositData = {};
+                itemTranslationMap = {};
+                isItemMapReady = false;
+                
+                if (depositFilterContainer) depositFilterContainer.classList.add('hidden');
+                if (playerLootContainer) playerLootContainer.innerHTML = '';
+                if (guildStatsCard) guildStatsCard.classList.add('hidden');
+            } else if (step === 'items') {
+                // Limpa tudo a partir do Passo 3
+                if (chestLogStatus) chestLogStatus.textContent = '';
+                chestDepositData = {};
+                
+                if (depositFilterContainer) depositFilterContainer.classList.add('hidden');
+            } else if (step === 'chest') {
+                 // Apenas atualiza a UI, não limpa dados anteriores
+                 if (depositFilterContainer) depositFilterContainer.classList.remove('hidden');
+            }
+            
+            // Reseta o estado inicial (se nenhum passo foi dado)
+            if (step === null) {
+                if (lootLogStatus) lootLogStatus.textContent = '';
+                if (itemsJsonStatus) itemsJsonStatus.textContent = '';
+                if (chestLogStatus) chestLogStatus.textContent = '';
+                lootData = {};
+                chestDepositData = {};
+                itemTranslationMap = {};
+                guildList.clear();
+                isItemMapReady = false;
+
+                if (filtersSection) filtersSection.classList.add('hidden');
+                if (depositFilterContainer) depositFilterContainer.classList.add('hidden');
+                if (playerLootContainer) playerLootContainer.innerHTML = '';
+                if (guildStatsCard) guildStatsCard.classList.add('hidden');
+            }
+            
+            // Garante que o filtro de guilda apareça se o loot estiver carregado
+            if (lootLoaded && filtersSection) {
+                filtersSection.classList.remove('hidden');
+            }
+            
+            // Garante que o filtro de depósito apareça se o baú estiver carregado
+            if (Object.keys(chestDepositData).length > 0 && depositFilterContainer) {
+                depositFilterContainer.classList.remove('hidden');
+            }
+        }
+
+
+        /**
+         * Mostra uma mensagem de erro na UI.
+         * @param {string} message - A mensagem de erro.
+         */
+        function showError(message) {
+            if (errorEl && errorElMsg) {
+                errorElMsg.textContent = message;
+                errorEl.classList.remove('hidden');
+            }
+            if (loading) loading.classList.add('hidden');
+            if (successEl) successEl.classList.add('hidden');
+        }
+
+        /**
+         * Mostra uma mensagem de sucesso na UI.
+         * @param {string} message - A mensagem de sucesso.
+         */
+        function showSuccess(message) {
+            if (successEl && successElMsg) {
+                successElMsg.textContent = message;
+                successEl.classList.remove('hidden');
+            }
+            if (loading) loading.classList.add('hidden');
+            if (errorEl) errorEl.classList.add('hidden');
+        }
+
+        /**
+         * Normaliza uma string (minúsculas, sem espaços extras) para usar como chave.
+         * @param {string} str - A string para normalizar.
+         * @returns {string} - A string normalizada.
+         */
+        function normalizeString(str) {
+            if (typeof str !== 'string') return '';
+            return str.toLowerCase().trim();
+        }
+
+        // --- INICIALIZAÇÃO E EVENTOS ---
+        // Espera o DOM carregar antes de inicializar elementos e adicionar listeners
+        window.addEventListener('DOMContentLoaded', () => { // Removido 'async'
+            
+            // 1. INICIALIZAÇÃO DOS ELEMENTOS DA DOM
+            lootLogInput = document.getElementById('lootLogInput');
+            lootLogStatus = document.getElementById('lootLogStatus');
+
+            // Adicionado de volta
+            itemsJsonInput = document.getElementById('itemsJsonInput');
+            itemsJsonLabel = document.getElementById('itemsJsonLabel');
+            itemsJsonStatus = document.getElementById('itemsJsonStatus');
+
+            chestLogInput = document.getElementById('chestLogInput');
+            chestLogLabel = document.getElementById('chestLogLabel');
+            chestLogStatus = document.getElementById('chestLogStatus');
+            
+            guildFilter = document.getElementById('guildFilter');
+            depositFilter = document.getElementById('depositFilter');
+            depositFilterContainer = document.getElementById('depositFilterContainer');
+            filtersSection = document.getElementById('filtersSection');
+            loading = document.getElementById('loading');
+            
+            errorEl = document.getElementById('error');
+            errorElMsg = document.getElementById('error-message');
+            successEl = document.getElementById('success');
+            successElMsg = document.getElementById('success-message');
+
+            guildStatsCard = document.getElementById('guildStatsCard');
+            guildStatsTitle = document.getElementById('guildStatsTitle');
+            guildStatsItems = document.getElementById('guildStatsItems');
+            playerLootContainer = document.getElementById('playerLootContainer');
+            
+            // 2. REMOVIDO: CARREGAMENTO AUTOMÁTICO DO ITEMS.JSON DO GITHUB
+
+            // 3. ATRIBUIÇÃO DOS EVENT LISTENERS
+            
+            // Event listener para o input do Log de Loot (Passo 1)
+            if (lootLogInput) {
+                lootLogInput.addEventListener('change', (event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    resetUI('loot'); // Reseta a partir do passo 1
+                    lootLogStatus.textContent = `Carregando: ${file.name}`;
+                    
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const csvText = e.target.result;
+                            const { data, guilds } = parseLootLog(csvText);
+                            lootData = data;
+                            guildList = guilds;
+                            
+                            showSuccess(`Log de Loot "${file.name}" carregado! ${Object.keys(lootData).length} jogadores encontrados.`);
+                            lootLogStatus.textContent = `Carregado: ${file.name}`;
+                            
+                            populateGuildFilter(guildList);
+                            resetUI('loot'); // Habilita o Passo 2 (items.json)
+                            displayLootData();
+                        } catch (err) {
+                            showError(`Erro ao processar o arquivo: ${err.message}`);
+                            console.error("Stack:", err.stack);
+                            resetUI(null); // Reseta tudo
+                        }
+                    };
+                    reader.onerror = () => {
+                        showError('Falha ao ler o arquivo.');
+                        resetUI(null);
+                    };
+                    reader.readAsText(file);
+                });
+            }
+
+            // Event listener para o input do items.json (Passo 2) - Adicionado de volta
+            if (itemsJsonInput) {
+                itemsJsonInput.addEventListener('change', (event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    resetUI('items'); // Reseta a partir do passo 2
+                    itemsJsonStatus.textContent = `Carregando: ${file.name}`;
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const jsonText = e.target.result;
+                            itemTranslationMap = buildItemTranslationMap(jsonText);
+                            isItemMapReady = true;
+
+                            showSuccess(`Dicionário de itens (items.json) carregado. ${Object.keys(itemTranslationMap).length} itens mapeados.`);
+                            itemsJsonStatus.textContent = `Carregado: ${file.name}`;
+
+                            resetUI('items'); // Habilita o Passo 3 (Baú)
+                        } catch (err) {
+                            showError(`Erro ao processar o items.json: ${err.message}`);
+                            console.error("Stack:", err.stack);
+                            isItemMapReady = false;
+                            resetUI('loot'); // Reverte para o estado pós-passo 1
+                        }
+                    };
+                    reader.onerror = () => {
+                        showError('Falha ao ler o arquivo items.json.');
+                        resetUI('loot');
+                    };
+                    reader.readAsText(file);
+                });
+            }
+            
+            // Event listener para o input do Log do Baú (Passo 3)
+            if (chestLogInput) {
+                chestLogInput.addEventListener('change', (event) => {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    resetUI('chest'); // Reseta a partir do passo 3
+                    chestLogStatus.textContent = `Carregando: ${file.name}`;
+                    
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const csvText = e.target.result;
+                            chestDepositData = parseChestLog(csvText);
+
+                            showSuccess(`Log do Baú "${file.name}" carregado! ${Object.keys(chestDepositData).length} jogadores encontrados no log do baú.`);
+                            chestLogStatus.textContent = `Carregado: ${file.name}`;
+
+                            resetUI('chest'); // Habilita o filtro de depósito
+                            displayLootData(); 
+                        } catch (err) {
+                            showError(`Erro ao processar o log do baú: ${err.message}`);
+                            console.error("Stack:", err.stack);
+                            resetUI('items'); // Reverte para o estado pós-passo 2
+                        }
+                    };
+                    reader.onerror = () => {
+                        showError('Falha ao ler o arquivo do baú.');
+                        resetUI('items');
+                    };
+                    reader.readAsText(file);
+                });
+            }
+            
+            // Event listeners para os filtros
+            if (guildFilter) {
+                guildFilter.addEventListener('change', displayLootData);
+            }
+            if (depositFilter) {
+                depositFilter.addEventListener('change', displayLootData);
+            }
+        });
+
+    </script>
+</body>
+</html>
+
