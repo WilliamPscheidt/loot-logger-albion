@@ -54,9 +54,44 @@
             opacity: 1;
         }
         
-        /* Estilo para ícones de item */
+        /* Elementos de Interface Modernos */
+        select, input, button, a {
+            transition: all 0.3s ease;
+        }
+
+        /* Efeito hover padrão para botões e links */
+        button:hover, a:hover {
+            opacity: 0.9;
+        }
+
+        /* Efeito simples para imagens de itens */
         .tooltip img {
             display: block;
+            transition: opacity 0.2s ease;
+        }
+
+        .tooltip:hover img {
+            opacity: 0.9;
+        }
+
+        /* Estilo moderno para selects */
+        select {
+            background-color: #1e293b; /* slate-800 */
+            border: 1px solid #475569; /* slate-600 */
+        }
+
+        select:hover, select:focus {
+            border-color: #94a3b8; /* slate-400 */
+            background-color: #334155; /* slate-700 */
+        }
+
+        /* Efeito de hover suave para cards */
+        .card-hover-effect {
+            transition: transform 0.2s ease;
+        }
+
+        .card-hover-effect:hover {
+            transform: translateY(-1px);
         }
 
     </style>
@@ -93,23 +128,67 @@
                     <!-- Passo 1: Log de Loot -->
                     <div>
                         <label for="lootLogInput" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 bg-slate-800 text-slate-50 hover:bg-slate-800/80 cursor-pointer w-full">
-                            1. Carregar Log de Loot (.csv)
+                            1. Carregar Log(s) de Loot (.csv) (suporta múltiplos)
                         </label>
-                        <input type="file" id="lootLogInput" class="hidden" accept=".csv">
-                        <p id="lootLogStatus" class="text-sm text-slate-400 mt-2 ml-1"></p>
+                        <input type="file" id="lootLogInput" class="hidden" accept=".csv,.txt" multiple>
+                        <div class="mt-2 ml-1 flex items-center gap-2">
+                            <p id="lootLogStatus" class="text-sm text-slate-400"></p>
+                            <button id="clearLootButton" class="text-sm px-2 py-1 rounded-md bg-slate-800 text-slate-200 hover:bg-slate-700">Limpar</button>
+                        </div>
                     </div>
 
                     <!-- Passo 2: Log do Baú (Renomeado) -->
                     <div>
                         <label for="chestLogInput" id="chestLogLabel" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 bg-slate-800 text-slate-50 hover:bg-slate-800/80 cursor-pointer w-full opacity-50" style="cursor: not-allowed;">
-                            2. Carregar Log do Baú (.csv)
+                            2. Carregar Log do Baú (.csv / .txt)
                         </label>
-                        <input type="file" id="chestLogInput" class="hidden" accept=".csv" disabled>
+                        <input type="file" id="chestLogInput" class="hidden" accept=".csv,.txt" disabled>
                         <p id="chestLogStatus" class="text-sm text-slate-400 mt-2 ml-1"></p>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Seção de Sumário -->
+        <section id="summarySection" class="hidden bg-slate-900 border border-slate-800 rounded-lg shadow-sm">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-medium">Sumário do Loot</h3>
+                    <div id="itemsSummary" class="text-sm px-3 py-1 bg-slate-800 rounded-md text-slate-200"></div>
+                </div>
+                <div class="space-y-4">
+                    <!-- Maior Looter -->
+                    <div class="flex items-center space-x-2">
+                        <div class="flex-shrink-0">
+                            <div class="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center">
+                                <svg class="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="flex-grow">
+                            <h4 class="text-sm font-medium text-slate-400">Maior Looter</h4>
+                            <p id="topLooterSummary" class="text-base font-semibold text-slate-200"></p>
+                        </div>
+                    </div>
+
+                    <!-- Guild Looter -->
+                    <div class="flex items-center space-x-2">
+                        <div class="flex-shrink-0">
+                            <div class="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center">
+                                <svg class="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="flex-grow">
+                            <h4 class="text-sm font-medium text-slate-400">Guild com Mais Loot</h4>
+                            <p id="topGuildSummary" class="text-base font-semibold text-slate-200"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
         
         <!-- Seção de Filtros (Estilo Card) -->
         <section id="filtersSection" class="hidden bg-slate-900 border border-slate-800 rounded-lg shadow-sm">
@@ -130,6 +209,7 @@
                         <option value="all">Todos os Itens</option>
                         <option value="deposited">Apenas Depositados (parcial ou total)</option>
                         <option value="not-deposited">Apenas Não Depositados</option>
+                        <option value="lost">Itens Perdidos</option>
                     </select>
                 </div>
             </div>
@@ -178,11 +258,12 @@
 
     <script type="module">
         // --- Variáveis Globais de Estado ---
-        let lootData = {}; // Guarda o loot principal
+    let lootData = {}; // Guarda o loot principal
         let chestDepositData = {}; // Guarda os depósitos do baú
         let itemTranslationMap = {}; // Guarda o "dicionário" (ex: "nome ptbr normalizado": "id_base_normalizado")
         let guildList = new Set(); // Lista de guildas únicas
         let isItemMapReady = false; // Flag para saber se o items.json foi carregado
+    let lootEntrySet = new Set(); // Set de chaves únicas para evitar duplicação entre múltiplos logs
 
         // --- Variáveis Globais da DOM ---
         // (Declaradas aqui, inicializadas no DOMContentLoaded)
@@ -192,6 +273,7 @@
             loading, loadingMsg, errorEl, successEl, errorElMsg, successElMsg,
             guildStatsCard, guildStatsTitle,
             guildStatsItems, playerLootContainer;
+        let clearLootButton;
 
 
         // --- FUNÇÕES DE LÓGICA E PARSING ---
@@ -231,9 +313,12 @@
          * @param {string} csvText - O conteúdo do arquivo CSV.
          * @returns {Object} - Objeto com { data: lootByPlayer, guilds: guildList }
          */
-        function parseLootLog(csvText) {
+        function parseLootLog(csvText, existingEntrySet = new Set()) {
             const lootByPlayer = {}; // Estrutura: { playerKey: { name, guild, items: { itemKey: { ... } } } }
             const guildList = new Set();
+            let entriesAdded = 0;
+            let duplicateEntries = 0;
+            let totalEntries = 0;
             
             // Remove BOM e corrige quebras de linha
             const lines = csvText.trim().replace(/^\uFEFF/, '').split(/\r?\n/);
@@ -251,6 +336,9 @@
             const itemIdIndex = headers.indexOf('item_id');
             const itemNameIndex = headers.indexOf('item_name');
             const quantityIndex = headers.indexOf('quantity');
+            
+            // Tenta detectar coluna de timestamp (se existir) para ajudar a compor chave única
+            const timestampIndex = headers.findIndex(h => ['time','timestamp','date','created_at','looted_at'].includes(h.toLowerCase()));
 
             // Validação dos cabeçalhos
             if ([nameIndex, guildIndex, itemIdIndex, itemNameIndex, quantityIndex].includes(-1)) {
@@ -271,12 +359,35 @@
                 const itemId = columns[itemIdIndex]?.replace(/"/g, '').trim(); // Ex: T7_2H_MACE@1
                 const itemName = columns[itemNameIndex]?.replace(/"/g, '').trim(); // Ex: Grandmaster's Heavy Mace
                 const quantity = parseInt(columns[quantityIndex], 10);
+                const timestamp = timestampIndex >= 0 ? (columns[timestampIndex] || '').replace(/"/g,'').trim() : '';
 
                 // Validação da linha
                 if (!playerName || !itemId || !itemName || isNaN(quantity) || quantity <= 0) {
                     continue; // Pula linhas inválidas ou que não sejam loot (ex: quantidade 0)
                 }
+
+                // Ignora itens do tipo "Trash" (T2_TRASH, T3_TRASH, etc)
+                // e também ignora "Combat Memento" (por nome ou por ID)
+                const itemIdUpper = (itemId || '').toUpperCase();
+                const itemNameLower = (itemName || '').toLowerCase();
+                if (itemIdUpper.includes('_TRASH') || itemIdUpper.includes('MEMENTO') || itemNameLower.includes('combat memento') || itemNameLower.includes('memento')) {
+                    // Pula itens classificados como lixo ou mementos de combate
+                    continue;
+                }
                 
+                // --- Checagem de duplicidade por entrada ---
+                // Chave composta: player normalizado | itemId completo | itemName normalizado | quantity | timestamp(optional)
+                const entryKey = `${normalizeString(playerName)}|${itemId}|${normalizeString(itemName)}|${quantity}|${timestamp}`;
+                totalEntries++;
+                if (existingEntrySet.has(entryKey)) {
+                    // Já processado em outro log
+                    duplicateEntries++;
+                    continue;
+                }
+                // Marca como existente para evitar duplicatas futuras
+                existingEntrySet.add(entryKey);
+                entriesAdded++;
+
                 // --- Normalização ---
                 // Chave do jogador (ex: "ogrenred")
                 const playerKey = normalizeString(playerName);
@@ -305,19 +416,39 @@
                         itemId: itemId, // ID completo (com @) para o ícone
                         uniqueName: uniqueName, // ID base (sem @)
                         lootedQuantity: 0,
-                        depositedQuantity: 0 // Inicia zerado
+                        depositedQuantity: 0, // Inicia zerado
+                        history: [], // Histórico de loots
+                        lostItem: false // Flag para itens perdidos
                     };
                 }
+                
+                // Adiciona entrada ao histórico
+                lootByPlayer[playerKey].items[itemKey].history.push({
+                    timestamp: timestamp || new Date().toISOString(),
+                    player: playerName,
+                    guild: playerGuild,
+                    quantity: quantity
+                });
                 
                 // Soma a quantidade looteada
                 lootByPlayer[playerKey].items[itemKey].lootedQuantity += quantity;
             }
             
             if (Object.keys(lootByPlayer).length === 0) {
+                // Se nenhum dado novo foi adicionado, retornamos erro específico
+                if (entriesAdded === 0) {
+                    throw new Error("Nenhum dado de loot válido ou novo foi encontrado no arquivo (talvez duplicado).");
+                }
                 throw new Error("Nenhum dado de loot válido foi encontrado no arquivo.");
             }
 
-            return { data: lootByPlayer, guilds: guildList };
+            return { 
+                data: lootByPlayer, 
+                guilds: guildList, 
+                entriesAdded,
+                duplicateEntries,
+                totalEntries 
+            };
         }
 
         /**
@@ -375,17 +506,32 @@
                 throw new Error("O arquivo do baú está vazio ou tem apenas cabeçalhos.");
             }
             
-            // Log do baú é separado por TAB (\t) e tem aspas
-            const headers = lines[0].trim().replace(/^\uFEFF/, '').split('\t').map(h => h.replace(/"/g, '').trim());
-            
-            const nameIndex = headers.indexOf('Jogador');
-            const itemIndex = headers.indexOf('Item');
-            const quantityIndex = headers.indexOf('Quantidade');
+            // Detecta automaticamente o delimitador do arquivo do baú (TAB, ; ou ,)
+            const rawHeaderLine = lines[0].trim().replace(/^\uFEFF/, '').replace(/"/g, '');
+            let delim = '\t';
+            if (rawHeaderLine.indexOf('\t') >= 0) delim = '\t';
+            else if (rawHeaderLine.indexOf(';') >= 0) delim = ';';
+            else if (rawHeaderLine.indexOf(',') >= 0) delim = ',';
+            const headers = rawHeaderLine.split(delim).map(h => h.trim());
+
+            // Tenta encontrar índices de colunas por variações de nomes (PT-BR / EN)
+            const findHeaderIndex = (candidates) => {
+                const lower = headers.map(h => h.toLowerCase());
+                for (const cand of candidates) {
+                    const idx = lower.findIndex(h => h === cand || h.includes(cand));
+                    if (idx !== -1) return idx;
+                }
+                return -1;
+            };
+
+            const nameIndex = findHeaderIndex(['jogador', 'player', 'nome', 'playername', 'looted_by__name']);
+            const itemIndex = findHeaderIndex(['item', 'itens', 'itemname', 'item_name', 'nome item']);
+            const quantityIndex = findHeaderIndex(['quantidade', 'quantity', 'amount', 'qty']);
             
             // Validação dos cabeçalhos
             if ([nameIndex, itemIndex, quantityIndex].includes(-1)) {
-                console.error("Cabeçalhos do Log do Baú encontrados:", headers);
-                throw new Error("Cabeçalhos do log do baú não encontrados: 'Jogador', 'Item' ou 'Quantidade' estão faltando.");
+                console.error("Cabeçalhos do Log do Baú (detectados):", headers, "delim:", JSON.stringify(delim));
+                throw new Error("Cabeçalhos do log do baú não encontrados (esperando Jogador/Item/Quantidade ou equivalentes). Verifique o separador/delimitador.");
             }
 
             // Itera pelas linhas de dados
@@ -393,7 +539,7 @@
                 const line = lines[i];
                 if (!line) continue; // Pula linhas em branco
                 
-                const columns = line.split('\t');
+                const columns = line.split(delim);
 
                 // Garante que a linha tem o número esperado de colunas
                 if (columns.length < Math.max(nameIndex, itemIndex, quantityIndex) + 1) {
@@ -449,6 +595,52 @@
             return depositsByPlayer;
         }
 
+        // --- Helpers para múltiplos arquivos e merge ---
+        /**
+         * Lê um File como texto usando Promise
+         * @param {File} file
+         * @returns {Promise<string>}
+         */
+        function readFileAsText(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(new Error('Falha ao ler o arquivo'));
+                reader.readAsText(file);
+            });
+        }
+
+        /**
+         * Mescla os dados retornados por parseLootLog (apenas entradas novas) em lootData
+         * @param {Object} parsedData
+         */
+        function mergeLootData(parsedData) {
+            for (const playerKey in parsedData) {
+                const player = parsedData[playerKey];
+                if (!lootData[playerKey]) {
+                    // Clona a estrutura do jogador
+                    lootData[playerKey] = {
+                        name: player.name,
+                        guild: player.guild,
+                        items: {}
+                    };
+                }
+
+                for (const itemKey in player.items) {
+                    const item = player.items[itemKey];
+                    if (!lootData[playerKey].items[itemKey]) {
+                        lootData[playerKey].items[itemKey] = { ...item };
+                    } else {
+                        // Soma quantidades (evita duplicar porque parse já filtrou)
+                        lootData[playerKey].items[itemKey].lootedQuantity += item.lootedQuantity;
+                        // Preserve itemId/name if missing
+                        if (!lootData[playerKey].items[itemKey].itemId) lootData[playerKey].items[itemKey].itemId = item.itemId;
+                        if (!lootData[playerKey].items[itemKey].name) lootData[playerKey].items[itemKey].name = item.name;
+                    }
+                }
+            }
+        }
+
         // --- FUNÇÕES DE RENDERIZAÇÃO E UI ---
 
         /**
@@ -456,9 +648,11 @@
          * Esta é a função principal de renderização.
          */
         function displayLootData() {
-            // Limpa os resultados anteriores
-            if (!playerLootContainer || !guildStatsItems || !guildStatsCard) return; // Proteção
+            // Proteções iniciais
+            if (!playerLootContainer || !guildStatsItems || !guildStatsCard) return;
+            if (!lootData || Object.keys(lootData).length === 0) return; // Não temos dados para mostrar
             
+            // Limpa os resultados anteriores
             playerLootContainer.innerHTML = '';
             guildStatsItems.innerHTML = '';
             guildStatsCard.classList.add('hidden');
@@ -466,6 +660,9 @@
             // Pega os valores dos filtros
             const selectedGuild = guildFilter.value;
             const selectedDepositStatus = depositFilter.value;
+
+            // Detecta itens perdidos antes de exibir
+            detectLostItems();
 
             // Objeto para acumular estatísticas da guilda
             const guildStats = {
@@ -502,7 +699,7 @@
                     
                     const lootedQty = item.lootedQuantity;
 
-                    // 5. Aplica filtro de DEPÓSITO
+                    // 5. Aplica filtro de DEPÓSITO e itens perdidos
                     let depositMatch = false;
                     switch (selectedDepositStatus) {
                         case 'deposited':
@@ -510,6 +707,9 @@
                             break;
                         case 'not-deposited':
                             depositMatch = (depositedQty === 0);
+                            break;
+                        case 'lost':
+                            depositMatch = item.lostItem !== false;
                             break;
                         case 'all':
                         default:
@@ -570,7 +770,7 @@
          */
         function createPlayerCard(playerName, playerGuild, items) {
             const card = document.createElement('div');
-            card.className = 'bg-slate-900 border border-slate-800 rounded-lg shadow-sm overflow-hidden';
+            card.className = 'bg-slate-900 border border-slate-800 rounded-lg shadow-sm overflow-hidden card-hover-effect';
 
             // Cabeçalho do Card
             const header = document.createElement('div');
@@ -600,8 +800,22 @@
             // Estilo de botão "link" do ShadCN
             ledgerLink.className = 'inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-9 px-3 py-1 bg-transparent text-slate-50 hover:bg-slate-800 hover:text-slate-50 shrink-0'; // shrink-0 para evitar quebra de linha
 
+            // Container para os botões
+            const buttonsContainer = document.createElement('div');
+            buttonsContainer.className = 'flex gap-2 items-center';
+
+            // Botão de fechar
+            const closeButton = document.createElement('button');
+            closeButton.innerHTML = '&times;'; // × symbol
+            closeButton.className = 'inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors h-9 w-9 bg-transparent text-slate-400 hover:bg-red-900/20 hover:text-red-400';
+            closeButton.title = 'Remover card';
+            closeButton.onclick = () => card.remove();
+
+            buttonsContainer.appendChild(ledgerLink);
+            buttonsContainer.appendChild(closeButton);
+
             header.appendChild(titleContainer);
-            header.appendChild(ledgerLink); // Adiciona o link ao cabeçalho
+            header.appendChild(buttonsContainer);
 
             // Container dos Itens
             const itemsContainer = document.createElement('div');
@@ -643,8 +857,18 @@
             img.src = `https://render.albiononline.com/v1/item/${baseUrl}.png?quality=${quality}&size=100`;
             
             img.alt = item.name;
-            // Estilo do ícone atualizado
-            img.className = 'w-16 h-16 rounded-md bg-slate-950 border-2 transition-all';
+            // Estilo do ícone atualizado com indicadores
+            let itemClass = 'w-16 h-16 rounded-md bg-slate-950 border-2 transition-all';
+            
+            // Só mostra indicadores de itens perdidos se o filtro estiver ativo
+            if (depositFilter?.value === 'lost') {
+                if (item.lostItem === 'lost') {
+                    itemClass += ' border-red-600 shadow-red-900/50 shadow-lg';
+                } else if (item.lostItem === 'found') {
+                    itemClass += ' border-green-600 shadow-green-900/50 shadow-lg';
+                }
+            }
+            img.className = itemClass;
             img.loading = 'lazy'; // Otimização
 
             // Contagem (ex: 5/10 ou apenas 10)
@@ -660,30 +884,55 @@
             const looted = item.lootedQuantity;
             const deposited = item.depositedQuantity;
 
-            // Se o log do baú foi carregado (chestDepositData não está vazio)
+            // Prepara informações do tooltip
+            let tooltipContent = `${item.name}<br>Looteado: ${looted.toLocaleString('pt-BR')}`;
+            
+            // Adiciona informação de depósito se disponível
             if (Object.keys(chestDepositData).length > 0) {
                 count.textContent = `${deposited.toLocaleString('pt-BR')}/${looted.toLocaleString('pt-BR')}`;
-                tooltipText.innerHTML = `${item.name}<br>Depositado: ${deposited.toLocaleString('pt-BR')}<br>Looteado: ${looted.toLocaleString('pt-BR')}`;
-                
-                // Borda Verde: 100% ou mais depositado
-                if (deposited >= looted) {
-                    img.className += ' border-green-600'; // Cor ShadCN
-                } 
-                // Borda Amarela: Parcialmente depositado
-                else if (deposited > 0) {
-                    img.className += ' border-yellow-500'; // Cor ShadCN
-                } 
-                // Borda Cinza/Padrão: Nada depositado
-                else {
-                    img.className += ' border-slate-800'; // Cor ShadCN
-                }
-            } 
-            // Se o log do baú AINDA não foi carregado
-            else {
+                tooltipContent += `<br>Depositado: ${deposited.toLocaleString('pt-BR')}`;
+            } else {
                 count.textContent = looted.toLocaleString('pt-BR');
-                tooltipText.innerHTML = `${item.name}<br>Looteado: ${looted.toLocaleString('pt-BR')}`;
-                img.className += ' border-slate-800'; // Borda padrão ShadCN
             }
+
+            // Adiciona informações de item perdido/encontrado
+            if (item.lostItem === 'lost') {
+                const nextPlayer = item.history.find(h => h.timestamp > item.history[0].timestamp)?.player;
+                tooltipContent += '<br><br><span class="text-red-400">⚠️ Item Perdido</span>';
+                if (nextPlayer) {
+                    tooltipContent += `<br>Encontrado por: ${nextPlayer}`;
+                }
+            } else if (item.lostItem === 'found') {
+                const previousPlayer = item.history.find(h => h.timestamp < item.history[item.history.length - 1].timestamp)?.player;
+                tooltipContent += '<br><br><span class="text-green-400">✓ Item Encontrado</span>';
+                if (previousPlayer) {
+                    tooltipContent += `<br>Perdido por: ${previousPlayer}`;
+                }
+            }
+
+            tooltipText.innerHTML = tooltipContent;
+
+            // Define a borda do item com base no contexto
+            let borderClass = ' border-slate-800'; // Borda padrão
+
+            if (depositFilter?.value === 'lost') {
+                // No filtro de itens perdidos, mostra as bordas de status perdido/encontrado
+                if (item.lostItem === 'lost') {
+                    borderClass = ' border-red-600 shadow-red-900/50 shadow-lg';
+                } else if (item.lostItem === 'found') {
+                    borderClass = ' border-green-600 shadow-green-900/50 shadow-lg';
+                }
+            } else if (Object.keys(chestDepositData).length > 0) {
+                // Nos outros filtros, mostra status de depósito se disponível
+                if (deposited >= looted) {
+                    borderClass = ' border-green-600';
+                } else if (deposited > 0) {
+                    borderClass = ' border-yellow-500';
+                }
+            }
+
+            // Aplica a classe de borda
+            img.className += borderClass;
 
             iconWrapper.appendChild(img);
             iconWrapper.appendChild(count);
@@ -743,6 +992,10 @@
                 if (depositFilterContainer) depositFilterContainer.classList.add('hidden');
                 if (playerLootContainer) playerLootContainer.innerHTML = '';
                 if (guildStatsCard) guildStatsCard.classList.add('hidden');
+                // Mostra seção de filtros quando tiver dados de loot
+                if (Object.keys(lootData).length > 0 && filtersSection) {
+                    filtersSection.classList.remove('hidden');
+                }
             } else if (step === 'items') {
                 // Acontece após o fetch do items.json. Apenas re-habilita o botão do baú.
                 // Não limpa mais nada.
@@ -827,6 +1080,135 @@
             return str.toLowerCase().trim();
         }
 
+        /**
+         * Atualiza o sumário do loot com estatísticas
+         */
+        /**
+         * Analisa o histórico de itens para detectar itens perdidos
+         * Um item é considerado perdido se:
+         * 1. Foi looteado por jogadores diferentes
+         * 2. Em ordem cronológica (timestamp)
+         * 3. Dentro de um intervalo razoável de tempo
+         */
+        function detectLostItems() {
+            // Mapa para rastrear o histórico de cada item único
+            const itemHistory = new Map();
+            
+            // Primeiro, vamos agrupar todos os loots pelo ID base do item
+            for (const player of Object.values(lootData)) {
+                for (const [itemKey, item] of Object.entries(player.items)) {
+                    const baseItemId = item.uniqueName;
+                    if (!itemHistory.has(baseItemId)) {
+                        itemHistory.set(baseItemId, []);
+                    }
+                    // Adiciona todas as entradas do histórico deste item
+                    itemHistory.get(baseItemId).push(...item.history.map(h => ({
+                        ...h,
+                        itemKey,
+                        baseItemId
+                    })));
+                }
+            }
+
+            // Agora, para cada item, ordenamos por timestamp e procuramos padrões de perda
+            for (const [baseItemId, history] of itemHistory.entries()) {
+                // Ordena por timestamp
+                history.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                
+                // Se o mesmo item aparece com players diferentes em sequência
+                for (let i = 0; i < history.length - 1; i++) {
+                    const current = history[i];
+                    const next = history[i + 1];
+                    
+                    // Se são players diferentes e dentro de um intervalo de 5 minutos
+                    const timeDiff = (new Date(next.timestamp) - new Date(current.timestamp)) / 1000 / 60; // em minutos
+                    if (current.player !== next.player && timeDiff <= 5) {
+                        // Marca o item como perdido no lootData
+                        const currentPlayer = normalizeString(current.player);
+                        const nextPlayer = normalizeString(next.player);
+                        
+                        // Marca o item como perdido para ambos os players
+                        if (lootData[currentPlayer]?.items[current.itemKey]) {
+                            lootData[currentPlayer].items[current.itemKey].lostItem = 'lost';
+                        }
+                        if (lootData[nextPlayer]?.items[next.itemKey]) {
+                            lootData[nextPlayer].items[next.itemKey].lostItem = 'found';
+                        }
+                    }
+                }
+            }
+        }
+
+        function updateLootSummary() {
+            const summarySection = document.getElementById('summarySection');
+            const itemsSummary = document.getElementById('itemsSummary');
+            const topLooterSummary = document.getElementById('topLooterSummary');
+            const topGuildSummary = document.getElementById('topGuildSummary');
+
+            if (!summarySection || !lootData) return;
+
+            // Mostrar a seção
+            summarySection.classList.remove('hidden');
+
+            // 1. Total de itens looteados
+            let totalItems = 0;
+            for (const player of Object.values(lootData)) {
+                for (const item of Object.values(player.items)) {
+                    totalItems += item.lootedQuantity;
+                }
+            }
+            itemsSummary.textContent = `${totalItems.toLocaleString()} itens`;
+
+            // 2. Maior Looter
+            let topLooter = { name: '', guild: '', total: 0 };
+            for (const [playerKey, player] of Object.entries(lootData)) {
+                let playerTotal = 0;
+                for (const item of Object.values(player.items)) {
+                    playerTotal += item.lootedQuantity;
+                }
+                if (playerTotal > topLooter.total) {
+                    topLooter = {
+                        name: player.name,
+                        guild: player.guild,
+                        total: playerTotal
+                    };
+                }
+            }
+            topLooterSummary.textContent = `${topLooter.name} [${topLooter.guild}] - ${topLooter.total.toLocaleString()} itens`;
+
+            // 3. Guild com mais loot
+            const guildTotals = new Map();
+            const guildMembers = new Map();
+            
+            // Calcula totais por guild
+            for (const player of Object.values(lootData)) {
+                const guild = player.guild || 'Sem Guild';
+                if (!guildTotals.has(guild)) {
+                    guildTotals.set(guild, 0);
+                    guildMembers.set(guild, new Set());
+                }
+                guildMembers.get(guild).add(player.name);
+                
+                for (const item of Object.values(player.items)) {
+                    guildTotals.set(guild, guildTotals.get(guild) + item.lootedQuantity);
+                }
+            }
+
+            // Encontra a guild com maior total
+            let topGuild = { name: '', total: 0, members: 0 };
+            for (const [guild, total] of guildTotals.entries()) {
+                if (total > topGuild.total) {
+                    topGuild = {
+                        name: guild,
+                        total: total,
+                        members: guildMembers.get(guild).size
+                    };
+                }
+            }
+            
+            topGuildSummary.textContent = `[${topGuild.name}] - ${topGuild.total.toLocaleString()} itens (${topGuild.members} membros)`;
+        }
+
         // --- INICIALIZAÇÃO E EVENTOS ---
         // Espera o DOM carregar antes de inicializar elementos e adicionar listeners
         window.addEventListener('DOMContentLoaded', async () => {
@@ -834,6 +1216,8 @@
             // 1. INICIALIZAÇÃO DOS ELEMENTOS DA DOM
             lootLogInput = document.getElementById('lootLogInput');
             lootLogStatus = document.getElementById('lootLogStatus');
+
+            clearLootButton = document.getElementById('clearLootButton');
 
             // Removidos: itemsJsonInput, itemsJsonLabel, itemsJsonStatus
 
@@ -863,41 +1247,76 @@
 
             // 3. ATRIBUIÇÃO DOS EVENT LISTENERS
             
-            // Event listener para o input do Log de Loot (Passo 1)
+            // Event listener para o input do Log de Loot (Passo 1) - suporta múltiplos arquivos e merge incremental
             if (lootLogInput) {
-                lootLogInput.addEventListener('change', (event) => {
-                    const file = event.target.files[0];
-                    if (!file) return;
+                lootLogInput.addEventListener('change', async (event) => {
+                    const files = Array.from(event.target.files || []);
+                    if (files.length === 0) return;
 
-                    resetUI('loot'); // Reseta a partir do passo 1
-                    lootLogStatus.textContent = `Carregando: ${file.name}`;
-                    showLoading("Processando Log de Loot...");
-                    
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
+                    // Não resetamos os dados existentes - fazemos merge incremental
+                    lootLogStatus.textContent = `Carregando ${files.length} arquivo(s)...`;
+
+                    let totalAdded = 0;
+                    let totalDuplicates = 0;
+
+                    for (const file of files) {
                         try {
-                            const csvText = e.target.result;
-                            const { data, guilds } = parseLootLog(csvText);
-                            lootData = data;
-                            guildList = guilds;
+                            showLoading(`Processando ${file.name}...`);
+                            const csvText = await readFileAsText(file);
+                            const { data, guilds, entriesAdded, duplicateEntries, totalEntries } = parseLootLog(csvText, lootEntrySet);
                             
-                            showSuccess(`Log de Loot "${file.name}" carregado! ${Object.keys(lootData).length} jogadores encontrados.`);
-                            lootLogStatus.textContent = `Carregado: ${file.name}`;
-                            
-                            populateGuildFilter(guildList);
-                            resetUI('loot'); // Habilita o Passo 2 (Baú)
-                            displayLootData();
+                            totalDuplicates += duplicateEntries;
+
+                            // Mescla os dados retornados (apenas entradas novas)
+                            mergeLootData(data);
+
+                            // Atualiza lista de guildas
+                            for (const g of guilds) guildList.add(g);
+
+                            totalAdded += (entriesAdded || 0);
+                            showSuccess(`Arquivo "${file.name}" processado. ${entriesAdded} entradas novas adicionadas.`);
+                            lootLogStatus.textContent = `Carregado: ${file.name} (+${entriesAdded})`;
                         } catch (err) {
-                            showError(`Erro ao processar o arquivo: ${err.message}`);
+                            // Se o arquivo não trouxe dados novos, avisamos, mas não limpamos tudo
+                            showError(`Erro ao processar "${file.name}": ${err.message}`);
                             console.error("Stack:", err.stack);
-                            resetUI(null); // Reseta tudo
+                            // continue com os próximos arquivos
                         }
-                    };
-                    reader.onerror = () => {
-                        showError('Falha ao ler o arquivo.');
-                        resetUI(null);
-                    };
-                    reader.readAsText(file);
+                    }
+
+                    // Atualiza UI e resultados na ordem correta
+                    populateGuildFilter(guildList);
+                    if (filtersSection) filtersSection.classList.remove('hidden');
+                    
+                    // Garante que os filtros estejam com valores padrão
+                    if (guildFilter) guildFilter.value = 'all';
+                    if (depositFilter) depositFilter.value = 'all';
+                    
+                    // Habilita próximos passos
+                    resetUI('loot'); // Habilita o Passo 2 (Baú) se aplicável
+                    
+                    // Força a exibição dos dados após configurar tudo
+                    displayLootData();
+
+                    // Atualiza o sumário
+                    updateLootSummary();
+
+                    // Limpa o input para permitir re-seleção dos mesmos arquivos
+                    try { if (lootLogInput) lootLogInput.value = ''; } catch (e) { /* ignore */ }
+
+                    // Mensagem resumida
+                    lootLogStatus.textContent = `Processamento concluído. Total de entradas novas: ${totalAdded.toLocaleString('pt-BR')}`;
+                });
+            }
+
+            // Botão limpar (reseta todos os dados carregados)
+            if (clearLootButton) {
+                clearLootButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    lootEntrySet.clear();
+                    resetUI(null);
+                    if (lootLogInput) lootLogInput.value = '';
+                    showSuccess('Dados de loot e depósitos limpos.');
                 });
             }
 
@@ -950,5 +1369,6 @@
     </script>
 </body>
 </html>
+
 
 
